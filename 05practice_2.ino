@@ -9,15 +9,16 @@ void loop() {
   digitalWrite(LED_PIN, 0);
   delay(1000);
   digitalWrite(LED_PIN, 1);
-  delay(200);
+  delay(1000);
 
   for (int i = 0; i < 5; i++) {
     digitalWrite(LED_PIN, 0);
-    delay(1000);
+    delay(100);
     digitalWrite(LED_PIN, 1);
-    delay(1000);
+    delay(100);
   }
 
   digitalWrite(LED_PIN, 1);
   while (1) { }
 }
+
