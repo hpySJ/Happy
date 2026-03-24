@@ -21,21 +21,82 @@
       height: 100vh;
     }
 
+    .bg-photo {
+      position: fixed;
+      inset: 0;
+      background-image: url('./images/KakaoTalk_20260324_172459491.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      opacity: 0;
+      transition: opacity 1.8s ease, transform 2.4s ease;
+      z-index: 0;
+      transform: scale(1.06);
+    }
+
+    .bg-photo.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .bg-photo::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.18);
+    }
+
     .card {
       position: absolute;
       left: 50%;
       top: 50%;
       transform: translate(-50%, -50%);
       text-align: center;
-      background: rgba(255, 255, 255, 0.94);
+      min-width: 340px;
       padding: 32px 28px;
       border-radius: 20px;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.12);
-      min-width: 340px;
       z-index: 1;
+
+      background: rgba(255, 255, 255, 0.55);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow:
+        0 12px 30px rgba(0, 0, 0, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+
+      transition:
+        background 0.6s ease,
+        backdrop-filter 0.6s ease,
+        box-shadow 0.6s ease,
+        transform 0.4s ease,
+        color 0.4s ease;
     }
 
-    h1 { margin: 0 0 22px; font-size: 28px; }
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      border-radius: 20px;
+      background: linear-gradient(
+        120deg,
+        rgba(255,255,255,0.45),
+        rgba(255,255,255,0.10),
+        rgba(255,255,255,0.35)
+      );
+      opacity: 0.45;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    h1 {
+      margin: 0 0 22px;
+      font-size: 28px;
+      position: relative;
+      z-index: 2;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      transition: color 0.4s ease, text-shadow 0.4s ease;
+    }
 
     .buttons {
       display: flex;
@@ -43,9 +104,17 @@
       align-items: center;
       gap: 16px;
       min-height: 58px;
+      position: relative;
+      z-index: 2;
+      transition: opacity 0.35s ease, transform 0.35s ease;
     }
 
-    /* 예 버튼 옆에 아니요가 있던 자리를 유지하는 유령 */
+    .buttons.hide {
+      opacity: 0;
+      transform: scale(0.96);
+      pointer-events: none;
+    }
+
     .no-ghost {
       display: inline-flex;
       align-items: center;
@@ -72,201 +141,385 @@
     #yesBtn {
       background: #ff5c8a;
       color: white;
-      transition: transform 0.1s;
+      box-shadow: 0 8px 18px rgba(255, 92, 138, 0.28);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.25s ease;
     }
-    #yesBtn:hover { transform: scale(1.06); }
 
-    /* 아니요 버튼: 화면 전체를 돌아다님 */
+    #yesBtn:hover {
+      transform: scale(1.06);
+      box-shadow: 0 12px 22px rgba(255, 92, 138, 0.35);
+    }
+
     #noBtn {
       position: fixed;
       background: #e9ecef;
       color: #333;
       z-index: 10;
-      /* opacity/pointer-events는 JS가 제어 */
+      box-shadow: 0 8px 18px rgba(0,0,0,0.08);
       transition:
         left 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-        top  0.28s cubic-bezier(0.22, 1, 0.36, 1);
+        top 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.3s ease,
+        transform 0.2s ease;
     }
 
     #result {
       margin-top: 20px;
+      min-height: 32px;
       font-size: 22px;
       font-weight: bold;
+      letter-spacing: 1px;
       color: #ff3d71;
-      min-height: 32px;
+      position: relative;
+      z-index: 2;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      transition: color 0.4s ease, text-shadow 0.4s ease;
+    }
+
+    .caret::after {
+      content: "|";
+      display: inline-block;
+      margin-left: 2px;
+      animation: blink 0.7s infinite;
+    }
+
+    @keyframes blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+
+    .confetti {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 10px;
+      height: 16px;
+      border-radius: 2px;
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 1;
+      will-change: transform, opacity;
+    }
+
+    @keyframes confetti-burst {
+      0% {
+        transform: translate(0, 0) rotate(0deg) scale(1);
+        opacity: 1;
+      }
+      100% {
+        transform:
+          translate(var(--dx), var(--dy))
+          rotate(var(--rot))
+          scale(0.7);
+        opacity: 0;
+      }
     }
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card">
-    <h1>나랑 놀래?</h1>
-    <div class="buttons">
-      <button id="yesBtn" type="button">예</button>
-      <!-- 아니요가 빠져나간 자리를 지키는 유령 -->
-      <span class="no-ghost">아니요</span>
+  <div class="bg-photo" id="bgPhoto"></div>
+
+  <div class="wrap">
+    <div class="card" id="card">
+      <h1 id="titleText">나랑 놀래?</h1>
+
+      <div class="buttons" id="buttonGroup">
+        <button id="yesBtn" type="button">예</button>
+        <span class="no-ghost" id="ghost">아니요</span>
+      </div>
+
+      <div id="result"></div>
     </div>
-    <div id="result"></div>
   </div>
-</div>
 
-<!-- 아니요 버튼은 카드 밖에 둬야 fixed 위치가 카드 stacking context에 안 갇힘 -->
-<button id="noBtn" type="button">아니요</button>
+  <button id="noBtn" type="button">아니요</button>
 
-<script>
-(function () {
-  'use strict';
+  <script>
+    (function () {
+      'use strict';
 
-  const noBtn   = document.getElementById('noBtn');
-  const yesBtn  = document.getElementById('yesBtn');
-  const result  = document.getElementById('result');
-  const ghost   = document.querySelector('.no-ghost');
+      const noBtn = document.getElementById('noBtn');
+      const yesBtn = document.getElementById('yesBtn');
+      const result = document.getElementById('result');
+      const ghost = document.getElementById('ghost');
+      const buttonGroup = document.getElementById('buttonGroup');
+      const bgPhoto = document.getElementById('bgPhoto');
+      const card = document.getElementById('card');
+      const titleText = document.getElementById('titleText');
 
-  /* ── 상태 ── */
-  let curX = 0, curY = 0;          // 버튼 현재 위치 (left, top)
-  let mouseX = 0, mouseY = 0;      // 마지막 마우스 위치
-  let dodgeReady = false;           // 회피 활성화 여부
-  let hidden = false;
+      let curX = 0;
+      let curY = 0;
+      let mouseX = 0;
+      let mouseY = 0;
+      let dodgeReady = false;
+      let hidden = false;
+      let hasMoved = false;
+      let lastDodge = 0;
+      let celebrated = false;
+      let typingTimer = null;
 
-  /* ── 유틸 ── */
-  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+      function clamp(v, lo, hi) {
+        return Math.max(lo, Math.min(hi, v));
+      }
 
-  /* ── 버튼 위치 설정 ── */
-  function setPos(x, y, animate) {
-    curX = x; curY = y;
-    if (!animate) {
-      noBtn.style.transition = 'none';
-      // 강제 reflow
-      void noBtn.offsetWidth;
-    } else {
-      noBtn.style.transition = 'left 0.28s cubic-bezier(0.22,1,0.36,1), top 0.28s cubic-bezier(0.22,1,0.36,1)';
-    }
-    noBtn.style.left = x + 'px';
-    noBtn.style.top  = y + 'px';
-  }
+      function setPos(x, y, animate) {
+        curX = x;
+        curY = y;
 
-  /* ── 유령(ghost) 위치로 순간이동 (초기 배치) ── */
-  function snapToGhost() {
-    const r = ghost.getBoundingClientRect();
-    // ghost 중앙 → 버튼 left/top
-    const x = r.left + (r.width  - noBtn.offsetWidth)  / 2;
-    const y = r.top  + (r.height - noBtn.offsetHeight) / 2;
-    setPos(x, y, false);
-    noBtn.style.opacity = '1';
-    noBtn.style.pointerEvents = 'auto';
-  }
+        if (!animate) {
+          noBtn.style.transition = 'none';
+          void noBtn.offsetWidth;
+          noBtn.style.transition =
+            'left 0.28s cubic-bezier(0.22,1,0.36,1), top 0.28s cubic-bezier(0.22,1,0.36,1), opacity 0.3s ease, transform 0.2s ease';
+        }
 
-  /* ── 도망 로직 ── */
-  function dodge() {
-    if (hidden || !dodgeReady) return;
+        noBtn.style.left = x + 'px';
+        noBtn.style.top = y + 'px';
+      }
 
-    const W = noBtn.offsetWidth;
-    const H = noBtn.offsetHeight;
-    const pad = 20;
-    const maxX = window.innerWidth  - W - pad;
-    const maxY = window.innerHeight - H - pad;
+      function snapToGhost() {
+        const r = ghost.getBoundingClientRect();
+        const x = r.left + (r.width - noBtn.offsetWidth) / 2;
+        const y = r.top + (r.height - noBtn.offsetHeight) / 2;
 
-    // 마우스 → 버튼 중심 방향으로 밀어내기
-    const cx = curX + W / 2;
-    const cy = curY + H / 2;
-    let dx = cx - mouseX;
-    let dy = cy - mouseY;
-    if (dx === 0 && dy === 0) { dx = 1; dy = -1; }
-    const len = Math.hypot(dx, dy) || 1;
-    dx /= len; dy /= len;
+        setPos(x, y, false);
+        noBtn.style.opacity = '1';
+        noBtn.style.pointerEvents = 'auto';
+        noBtn.style.transform = 'scale(1)';
+      }
 
-    const PUSH = 220;
-    let nx = clamp(curX + dx * PUSH, pad, maxX);
-    let ny = clamp(curY + dy * PUSH, pad, maxY);
+      function dodge() {
+        const now = Date.now();
+        if (hidden || !dodgeReady) return;
+        if (now - lastDodge < 140) return;
+        lastDodge = now;
 
-    // 마우스와 너무 가까우면 추가 밀어내기
-    const SAFE = 130;
-    for (let i = 0; i < 8; i++) {
-      const ncx = nx + W / 2;
-      const ncy = ny + H / 2;
-      if (Math.hypot(ncx - mouseX, ncy - mouseY) >= SAFE) break;
-      const a = Math.atan2(ncy - mouseY, ncx - mouseX) + (Math.random() - 0.5) * 0.8;
-      nx = clamp(mouseX + Math.cos(a) * SAFE - W / 2, pad, maxX);
-      ny = clamp(mouseY + Math.sin(a) * SAFE - H / 2, pad, maxY);
-    }
+        const W = noBtn.offsetWidth;
+        const H = noBtn.offsetHeight;
+        const pad = 20;
+        const maxX = window.innerWidth - W - pad;
+        const maxY = window.innerHeight - H - pad;
 
-    // 예 버튼과 너무 겹치면 밀어내기
-    const yr = yesBtn.getBoundingClientRect();
-    const ycx = yr.left + yr.width  / 2;
-    const ycy = yr.top  + yr.height / 2;
-    const ncx = nx + W / 2;
-    const ncy = ny + H / 2;
-    if (Math.hypot(ncx - ycx, ncy - ycy) < 130) {
-      const a = Math.atan2(ncy - ycy, ncx - ycx) || 0;
-      nx = clamp(ycx + Math.cos(a) * 130 - W / 2, pad, maxX);
-      ny = clamp(ycy + Math.sin(a) * 130 - H / 2, pad, maxY);
-    }
+        const cx = curX + W / 2;
+        const cy = curY + H / 2;
 
-    setPos(nx, ny, true);
-  }
+        let dx = cx - mouseX;
+        let dy = cy - mouseY;
 
-  /* ── 마우스 이벤트 ── */
-  window.addEventListener('mousemove', function (e) {
-    mouseX = e.clientX;
-    mouseY = e.clientY;
-    if (!dodgeReady || hidden) return;
+        if (dx === 0 && dy === 0) {
+          dx = 1;
+          dy = -1;
+        }
 
-    const r = noBtn.getBoundingClientRect();
-    const margin = 60; // 이 범위 안에 들어오면 도망
-    if (
-      e.clientX >= r.left - margin && e.clientX <= r.right  + margin &&
-      e.clientY >= r.top  - margin && e.clientY <= r.bottom + margin
-    ) {
-      dodge();
-    }
-  });
+        const len = Math.hypot(dx, dy) || 1;
+        dx /= len;
+        dy /= len;
 
-  /* ── 터치 이벤트 (모바일) ── */
-  noBtn.addEventListener('touchstart', function (e) {
-    e.preventDefault();
-    const t = e.touches[0];
-    if (t) { mouseX = t.clientX; mouseY = t.clientY; }
-    dodge();
-  }, { passive: false });
+        const PUSH = 140;
+        let nx = clamp(curX + dx * PUSH, pad, maxX);
+        let ny = clamp(curY + dy * PUSH, pad, maxY);
 
-  /* ── 예 버튼 클릭 ── */
-  yesBtn.addEventListener('click', function () {
-    hidden = true;
-    noBtn.style.opacity = '0';
-    noBtn.style.pointerEvents = 'none';
-    result.textContent = '좋아 ❤️';
-  });
+        const SAFE = 120;
 
-  /* ── 창 크기 바뀌면 ghost 위치로 재정렬 ── */
-  window.addEventListener('resize', function () {
-    dodgeReady = false;
-    snapToGhost();
-    // 잠깐 후 다시 활성화
-    setTimeout(function () { dodgeReady = true; }, 400);
-  });
+        for (let i = 0; i < 8; i++) {
+          const ncx = nx + W / 2;
+          const ncy = ny + H / 2;
 
-  /* ── 초기화 ── */
-  function init() {
-    // 버튼을 일단 투명하게
-    noBtn.style.opacity = '0';
-    noBtn.style.pointerEvents = 'none';
+          if (Math.hypot(ncx - mouseX, ncy - mouseY) >= SAFE) break;
 
-    // ghost가 실제로 렌더링된 뒤 위치를 잡아야 하므로 rAF 두 번
-    requestAnimationFrame(function () {
-      requestAnimationFrame(function () {
-        snapToGhost();
-        // 짧은 딜레이 후 회피 활성화 (사용자가 페이지 로드하자마자 버튼이 도망가는 것 방지)
-        setTimeout(function () { dodgeReady = true; }, 600);
+          const a = Math.atan2(ncy - mouseY, ncx - mouseX) + (Math.random() - 0.5) * 0.8;
+          nx = clamp(mouseX + Math.cos(a) * SAFE - W / 2, pad, maxX);
+          ny = clamp(mouseY + Math.sin(a) * SAFE - H / 2, pad, maxY);
+        }
+
+        const yr = yesBtn.getBoundingClientRect();
+        const ycx = yr.left + yr.width / 2;
+        const ycy = yr.top + yr.height / 2;
+        const ncx = nx + W / 2;
+        const ncy = ny + H / 2;
+
+        if (Math.hypot(ncx - ycx, ncy - ycy) < 120) {
+          const a = Math.atan2(ncy - ycy, ncx - ycx) || 0;
+          nx = clamp(ycx + Math.cos(a) * 120 - W / 2, pad, maxX);
+          ny = clamp(ycy + Math.sin(a) * 120 - H / 2, pad, maxY);
+        }
+
+        setPos(nx, ny, true);
+      }
+
+      function launchConfetti(x, y, count) {
+        const colors = ['#ff4d6d', '#ff8fab', '#ffd166', '#06d6a0', '#118ab2', '#8338ec'];
+
+        for (let i = 0; i < count; i++) {
+          const piece = document.createElement('div');
+          piece.className = 'confetti';
+
+          const angle = (Math.PI * 2 * i) / count + (Math.random() * 0.7 - 0.35);
+          const distance = 140 + Math.random() * 180;
+          const dx = Math.cos(angle) * distance + 'px';
+          const dy = Math.sin(angle) * distance + 120 + Math.random() * 120 + 'px';
+          const rot = (Math.random() * 720 - 360) + 'deg';
+
+          piece.style.left = x + 'px';
+          piece.style.top = y + 'px';
+          piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+          piece.style.setProperty('--dx', dx);
+          piece.style.setProperty('--dy', dy);
+          piece.style.setProperty('--rot', rot);
+
+          const duration = 900 + Math.random() * 700;
+          piece.style.animation = 'confetti-burst ' + duration + 'ms cubic-bezier(0.2,0.8,0.2,1) forwards';
+
+          document.body.appendChild(piece);
+
+          piece.addEventListener('animationend', function () {
+            piece.remove();
+          });
+        }
+      }
+
+      function typeText(target, text, speed) {
+        if (typingTimer) {
+          clearInterval(typingTimer);
+          typingTimer = null;
+        }
+
+        target.textContent = '';
+        target.classList.add('caret');
+
+        let i = 0;
+
+        typingTimer = setInterval(function () {
+          target.textContent += text.charAt(i);
+          i++;
+
+          if (i >= text.length) {
+            clearInterval(typingTimer);
+            typingTimer = null;
+
+            setTimeout(function () {
+              target.classList.remove('caret');
+            }, 800);
+          }
+        }, speed);
+      }
+
+      function celebrateYes() {
+        if (celebrated) return;
+        celebrated = true;
+
+        const r = yesBtn.getBoundingClientRect();
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+
+        hidden = true;
+
+        buttonGroup.classList.add('hide');
+
+        yesBtn.style.opacity = '0';
+        noBtn.style.opacity = '0';
+        noBtn.style.pointerEvents = 'none';
+        noBtn.style.transform = 'scale(0.92)';
+
+        card.style.background = 'rgba(255,255,255,0.35)';
+        card.style.backdropFilter = 'blur(18px)';
+        card.style.webkitBackdropFilter = 'blur(18px)';
+        card.style.transform = 'translate(-50%, -50%) scale(1.04)';
+        card.style.boxShadow = '0 18px 40px rgba(0,0,0,0.25)';
+        card.style.color = '#ffffff';
+
+        titleText.style.color = '#ffffff';
+        titleText.style.textShadow = '0 2px 10px rgba(0,0,0,0.35)';
+        result.style.color = '#ffffff';
+        result.style.textShadow = '0 2px 10px rgba(0,0,0,0.35)';
+
+        setTimeout(function () {
+          bgPhoto.classList.add('show');
+        }, 120);
+
+        setTimeout(function () {
+          typeText(result, '좋아 ❤️', 120);
+        }, 320);
+
+        launchConfetti(cx, cy, 40);
+
+        setTimeout(function () {
+          launchConfetti(cx, cy, 32);
+        }, 180);
+
+        setTimeout(function () {
+          launchConfetti(cx, cy, 28);
+        }, 360);
+      }
+
+      window.addEventListener('mousemove', function (e) {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+
+        if (!hasMoved) {
+          hasMoved = true;
+          return;
+        }
+
+        if (!dodgeReady || hidden) return;
+
+        const r = noBtn.getBoundingClientRect();
+        const margin = 30;
+
+        if (
+          e.clientX >= r.left - margin && e.clientX <= r.right + margin &&
+          e.clientY >= r.top - margin && e.clientY <= r.bottom + margin
+        ) {
+          dodge();
+        }
       });
-    });
-  }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init, { once: true });
-  } else {
-    init();
-  }
-})();
-</script>
+      noBtn.addEventListener('touchstart', function (e) {
+        e.preventDefault();
+
+        const t = e.touches[0];
+        if (t) {
+          mouseX = t.clientX;
+          mouseY = t.clientY;
+        }
+
+        dodge();
+      }, { passive: false });
+
+      yesBtn.addEventListener('click', celebrateYes);
+
+      window.addEventListener('resize', function () {
+        if (hidden) return;
+
+        dodgeReady = false;
+        snapToGhost();
+
+        setTimeout(function () {
+          dodgeReady = true;
+        }, 400);
+      });
+
+      function init() {
+        noBtn.style.opacity = '0';
+        noBtn.style.pointerEvents = 'none';
+
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            snapToGhost();
+
+            setTimeout(function () {
+              dodgeReady = true;
+            }, 600);
+          });
+        });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init, { once: true });
+      } else {
+        init();
+      }
+    })();
+  </script>
 </body>
 </html>
