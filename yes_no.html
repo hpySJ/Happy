@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>예 / 아니요</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #ffe4ec, #fff7d6);
+      overflow: hidden;
+    }
+
+    .wrap {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .card {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      background: rgba(255, 255, 255, 0.94);
+      padding: 32px 28px;
+      border-radius: 20px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+      min-width: 340px;
+      z-index: 1;
+    }
+
+    h1 { margin: 0 0 22px; font-size: 28px; }
+
+    .buttons {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      min-height: 58px;
+    }
+
+    /* 예 버튼 옆에 아니요가 있던 자리를 유지하는 유령 */
+    .no-ghost {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 28px;
+      font-size: 18px;
+      border-radius: 999px;
+      white-space: nowrap;
+      visibility: hidden;
+      user-select: none;
+      pointer-events: none;
+      background: #e9ecef;
+    }
+
+    button {
+      border: none;
+      padding: 14px 28px;
+      font-size: 18px;
+      border-radius: 999px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    #yesBtn {
+      background: #ff5c8a;
+      color: white;
+      transition: transform 0.1s;
+    }
+    #yesBtn:hover { transform: scale(1.06); }
+
+    /* 아니요 버튼: 화면 전체를 돌아다님 */
+    #noBtn {
+      position: fixed;
+      background: #e9ecef;
+      color: #333;
+      z-index: 10;
+      /* opacity/pointer-events는 JS가 제어 */
+      transition:
+        left 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+        top  0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #result {
+      margin-top: 20px;
+      font-size: 22px;
+      font-weight: bold;
+      color: #ff3d71;
+      min-height: 32px;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>나랑 놀래?</h1>
+    <div class="buttons">
+      <button id="yesBtn" type="button">예</button>
+      <!-- 아니요가 빠져나간 자리를 지키는 유령 -->
+      <span class="no-ghost">아니요</span>
+    </div>
+    <div id="result"></div>
+  </div>
+</div>
+
+<!-- 아니요 버튼은 카드 밖에 둬야 fixed 위치가 카드 stacking context에 안 갇힘 -->
+<button id="noBtn" type="button">아니요</button>
+
+<script>
+(function () {
+  'use strict';
+
+  const noBtn   = document.getElementById('noBtn');
+  const yesBtn  = document.getElementById('yesBtn');
+  const result  = document.getElementById('result');
+  const ghost   = document.querySelector('.no-ghost');
+
+  /* ── 상태 ── */
+  let curX = 0, curY = 0;          // 버튼 현재 위치 (left, top)
+  let mouseX = 0, mouseY = 0;      // 마지막 마우스 위치
+  let dodgeReady = false;           // 회피 활성화 여부
+  let hidden = false;
+
+  /* ── 유틸 ── */
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  /* ── 버튼 위치 설정 ── */
+  function setPos(x, y, animate) {
+    curX = x; curY = y;
+    if (!animate) {
+      noBtn.style.transition = 'none';
+      // 강제 reflow
+      void noBtn.offsetWidth;
+    } else {
+      noBtn.style.transition = 'left 0.28s cubic-bezier(0.22,1,0.36,1), top 0.28s cubic-bezier(0.22,1,0.36,1)';
+    }
+    noBtn.style.left = x + 'px';
+    noBtn.style.top  = y + 'px';
+  }
+
+  /* ── 유령(ghost) 위치로 순간이동 (초기 배치) ── */
+  function snapToGhost() {
+    const r = ghost.getBoundingClientRect();
+    // ghost 중앙 → 버튼 left/top
+    const x = r.left + (r.width  - noBtn.offsetWidth)  / 2;
+    const y = r.top  + (r.height - noBtn.offsetHeight) / 2;
+    setPos(x, y, false);
+    noBtn.style.opacity = '1';
+    noBtn.style.pointerEvents = 'auto';
+  }
+
+  /* ── 도망 로직 ── */
+  function dodge() {
+    if (hidden || !dodgeReady) return;
+
+    const W = noBtn.offsetWidth;
+    const H = noBtn.offsetHeight;
+    const pad = 20;
+    const maxX = window.innerWidth  - W - pad;
+    const maxY = window.innerHeight - H - pad;
+
+    // 마우스 → 버튼 중심 방향으로 밀어내기
+    const cx = curX + W / 2;
+    const cy = curY + H / 2;
+    let dx = cx - mouseX;
+    let dy = cy - mouseY;
+    if (dx === 0 && dy === 0) { dx = 1; dy = -1; }
+    const len = Math.hypot(dx, dy) || 1;
+    dx /= len; dy /= len;
+
+    const PUSH = 220;
+    let nx = clamp(curX + dx * PUSH, pad, maxX);
+    let ny = clamp(curY + dy * PUSH, pad, maxY);
+
+    // 마우스와 너무 가까우면 추가 밀어내기
+    const SAFE = 130;
+    for (let i = 0; i < 8; i++) {
+      const ncx = nx + W / 2;
+      const ncy = ny + H / 2;
+      if (Math.hypot(ncx - mouseX, ncy - mouseY) >= SAFE) break;
+      const a = Math.atan2(ncy - mouseY, ncx - mouseX) + (Math.random() - 0.5) * 0.8;
+      nx = clamp(mouseX + Math.cos(a) * SAFE - W / 2, pad, maxX);
+      ny = clamp(mouseY + Math.sin(a) * SAFE - H / 2, pad, maxY);
+    }
+
+    // 예 버튼과 너무 겹치면 밀어내기
+    const yr = yesBtn.getBoundingClientRect();
+    const ycx = yr.left + yr.width  / 2;
+    const ycy = yr.top  + yr.height / 2;
+    const ncx = nx + W / 2;
+    const ncy = ny + H / 2;
+    if (Math.hypot(ncx - ycx, ncy - ycy) < 130) {
+      const a = Math.atan2(ncy - ycy, ncx - ycx) || 0;
+      nx = clamp(ycx + Math.cos(a) * 130 - W / 2, pad, maxX);
+      ny = clamp(ycy + Math.sin(a) * 130 - H / 2, pad, maxY);
+    }
+
+    setPos(nx, ny, true);
+  }
+
+  /* ── 마우스 이벤트 ── */
+  window.addEventListener('mousemove', function (e) {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    if (!dodgeReady || hidden) return;
+
+    const r = noBtn.getBoundingClientRect();
+    const margin = 60; // 이 범위 안에 들어오면 도망
+    if (
+      e.clientX >= r.left - margin && e.clientX <= r.right  + margin &&
+      e.clientY >= r.top  - margin && e.clientY <= r.bottom + margin
+    ) {
+      dodge();
+    }
+  });
+
+  /* ── 터치 이벤트 (모바일) ── */
+  noBtn.addEventListener('touchstart', function (e) {
+    e.preventDefault();
+    const t = e.touches[0];
+    if (t) { mouseX = t.clientX; mouseY = t.clientY; }
+    dodge();
+  }, { passive: false });
+
+  /* ── 예 버튼 클릭 ── */
+  yesBtn.addEventListener('click', function () {
+    hidden = true;
+    noBtn.style.opacity = '0';
+    noBtn.style.pointerEvents = 'none';
+    result.textContent = '좋아, 예 누른 거다 😎';
+  });
+
+  /* ── 창 크기 바뀌면 ghost 위치로 재정렬 ── */
+  window.addEventListener('resize', function () {
+    dodgeReady = false;
+    snapToGhost();
+    // 잠깐 후 다시 활성화
+    setTimeout(function () { dodgeReady = true; }, 400);
+  });
+
+  /* ── 초기화 ── */
+  function init() {
+    // 버튼을 일단 투명하게
+    noBtn.style.opacity = '0';
+    noBtn.style.pointerEvents = 'none';
+
+    // ghost가 실제로 렌더링된 뒤 위치를 잡아야 하므로 rAF 두 번
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        snapToGhost();
+        // 짧은 딜레이 후 회피 활성화 (사용자가 페이지 로드하자마자 버튼이 도망가는 것 방지)
+        setTimeout(function () { dodgeReady = true; }, 600);
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
